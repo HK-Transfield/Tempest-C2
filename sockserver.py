@@ -1,5 +1,5 @@
 import socket
-
+import sys
 
 def listener_handler():
     # bind the socket to the local address
@@ -46,7 +46,6 @@ def listener_handler():
 
 # generate the socket handler for our code
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-host_ip = '127.0.0.1'
-host_port = 2222
+host_ip = sys.argv[1]
+host_port = int(sys.argv[2])
 listener_handler()

