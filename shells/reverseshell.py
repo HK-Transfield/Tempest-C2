@@ -39,7 +39,7 @@ def create_windows_payload(host_ip, host_port):
     else:
         print(bcolors.FAIL + '[-] Some error occured during generation.' + bcolors.ENDC)
 
-def create_unix_payload(host_ip, host_port):
+def create_linux_payload(host_ip, host_port):
     # TODO: Update to save new file to /payloads
     # generate random filename
     rand_name = (''.join(random.choices(string.ascii_lowercase, k=6)))

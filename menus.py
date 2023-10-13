@@ -10,7 +10,8 @@ class bcolors:
     UNDERLINE = '\033[4m'
 
 def banner():
-    """ Prints an ASCII art title banner. Intended to use when starting the server.
+    """ Prints an ASCII art title banner. Intended to use when starting the
+        Tempest C2 server.
     """
     print(bcolors.HEADER + '=============================================' + bcolors.ENDC)
     print(bcolors.HEADER + ' _____  _____ _      ____  _____ ____  _____ ' + bcolors.ENDC)
@@ -22,6 +23,9 @@ def banner():
     print(bcolors.HEADER + '=============================================\n' + bcolors.ENDC)
 
 def help():
+    """ Print a help menu of commands that a user can issue to the
+        Tempest C2 server.
+    """
     print('''
 
     Menu Commands
