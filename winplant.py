@@ -1,3 +1,4 @@
+import base64
 import ctypes
 import socket
 import subprocess
