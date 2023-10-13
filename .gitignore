@@ -1,1 +1,2 @@
-/payloads
+payloads/
+__pycache__/
