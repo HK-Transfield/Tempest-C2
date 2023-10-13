@@ -273,13 +273,15 @@ if __name__ == '__main__':
 
             if command == 'unixplant py':
                 if listener_counter > 0:
-                    reverseshell.create_unix_payload(host_ip, host_port)
+                    # reverseshell.create_unix_payload(host_ip, host_port)
+                    print(bcolors.WARNING + '[-] This feature is not yet ready!')
                 else:
                     print(bcolors.WARNING + '[-] You cannot generate a Linux payload without an active listener' + bcolors.ENDC)
 
             if command == 'exeplant':
                 if listener_counter > 0:
-                    reverseshell.create_exe_payload(host_ip, host_port)
+                    print(bcolors.WARNING + '[-] This feature is not yet ready!')
+                    # reverseshell.create_exe_payload(host_ip, host_port)
                 else:
                     print(bcolors.WARNING + '[-] You cannot generate an exe payload without an active listener' + bcolors.ENDC)
 
