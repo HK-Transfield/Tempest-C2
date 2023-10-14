@@ -4,9 +4,7 @@ from prettytable import PrettyTable
 from shells import reverseshell, cradles
 
 import base64
-import random
 import socket
-import string
 import threading
 import time
 """
@@ -115,9 +113,7 @@ def target_comm(target_id, targets, num):
                 print(response)
 
 def listener_handler():
-    """ Hosts the listener for the socket, binds the socket, accepts
-        traffic, and then redirects that traffic.
-    """
+    """Hosts the listener for the socket, binds the socket, accepts traffic, and then redirects that traffic."""
     sock.bind((host_ip, int(host_port)))
     print('[+] Awaiting connection from client...')
     sock.listen()
@@ -125,9 +121,7 @@ def listener_handler():
     t1.start()
 
 def comms_handler():
-    """ Directs traffic to where it needs to go and ensures that it is
-        receiving it where needed.
-    """
+    """Directs traffic to where it needs to go and ensures that it is receiving it where needed."""
     while True:
         # ! WHY IS THIS NOT WORKING ON LINUX?
         if kill_flag == STOP_SERVER:
